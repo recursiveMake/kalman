@@ -4,21 +4,11 @@
 
 (m/set-current-implementation :vectorz)
 
-(def example-state {:state [] ; x, vector of n quantities that evolve with time
-                    :covariance [] ; P, Sigma, matrix of correlations between objects in state, nxn
-                    :sensor-variance [] ; H, matrix of variance of sensor n
-                    :prediction [] ; F, matrix that evolves x
-                    :control [] ; B, matrix for external influence
-                    :control-vector [] ; u, vector for external influence
-                    :noise [] ; Q, matrix of untracked influences
-                    :gain [] ; K, matrix for gain
-                    :sensor-noise [] ; R, matrix of noise in the sensor
-                    })
-
 ;; (def start-state
 ;;   (set-system-parameter (create-system 1)
 ;;                         {:state (m/matrix [881])
 ;;                          :sensor-noise (m/matrix [200])
+;;                          :state-function #(m/add (m/mmul 0.75 %) (m/mmul 0 %2))
 ;;                          :prediction (m/matrix [0.75])}))
 
 ;; (def obs (map #(m/matrix [%]) [662 496 372 279 157 118 88 66]))
@@ -31,22 +21,22 @@
 (defn create-system
   "Create an empty system"
   [size]
-  {:state (m/matrix (repeat size 0))
-   :covariance (m/identity-matrix size)
-   :sensor-variance (m/identity-matrix size)
-   :prediction (m/identity-matrix size)
-   :control (m/zero-matrix size size)
-   :control-vector (m/matrix (repeat size 0))
-   :noise (m/zero-matrix size size)
-   :gain (m/zero-matrix size size)
-   :sensor-noise (m/zero-matrix size size)
+  {:state (m/matrix (repeat size 0))    ; x, state
+   :covariance (m/identity-matrix size) ; P, covariance
+   :sensor-variance (m/identity-matrix size)  ; H, Jacobian of sensor function h(x)
+   :prediction (m/identity-matrix size) ; F, Jacobian of state-transition function f(x, u)
+   :noise (m/zero-matrix size size)     ; Q, untracked influences
+   :gain (m/zero-matrix size size)      ; G, gain
+   :sensor-noise (m/zero-matrix size size) ; R, sensor variance
+   :state-function first                ; f(x, u)
+   :sensor-function identity            ; h(x)
+   :control (m/matrix (repeat size 0))  ; u, control
    :size 0})
 
 (defn predict-state
-  "Fx + Bu"
+  "f(x, u)"
   [system]
-  (m/add (m/mmul (:prediction system) (:state system))
-         (m/mmul (:control system) (:control-vector system))))
+  ((:state-function system) (:state system) (:control system)))
 
 (defn predict-covariance
   "FPF' + Q"
@@ -64,15 +54,15 @@
                             (:sensor-noise system)))))
 
 (defn update-state
-  "x + K(z-Hx)"
+  "x + G(z-h(x))"
   [system observation]
   (m/add (:state system)
          (m/mmul (:gain system)
                  (m/sub observation
-                        (m/mmul (:sensor-variance system) (:state system))))))
+                        ((:sensor-function system) (:state system))))))
 
 (defn update-covariance
-  "P - KHP"
+  "P - GHP"
   [system]
   (m/sub (:covariance system)
          (m/mmul (:gain system)
