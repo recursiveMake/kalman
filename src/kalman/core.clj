@@ -4,15 +4,6 @@
 
 (m/set-current-implementation :vectorz)
 
-;; (def start-state
-;;   (set-system-parameter (create-system 1)
-;;                         {:state (m/matrix [881])
-;;                          :sensor-noise (m/matrix [200])
-;;                          :state-function #(m/add (m/mmul 0.75 %) (m/mmul 0 %2))
-;;                          :prediction (m/matrix [0.75])}))
-
-;; (def obs (map #(m/matrix [%]) [662 496 372 279 157 118 88 66]))
-
 (defn set-system-parameter
   "Updates system with a vector"
   [system kv]

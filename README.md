@@ -1,36 +1,36 @@
 # kalman
 
-FIXME: description
+An implementation of the Kalman filter based on https://home.wlu.edu/~levys/kalman_tutorial/
 
 ## Installation
 
-Download from http://example.com/FIXME.
+Download from https://github.com/recursiveMake/kalman
 
 ## Usage
 
-FIXME: explanation
+``` shell
+lein repl
+```
 
-    $ java -jar kalman-0.1.0-standalone.jar [args]
+``` clojure
+;; Create a system with parameters
+(def start-state
+  (set-system-parameter (create-system 1)
+                        {:state (m/matrix [881])
+                         :sensor-noise (m/matrix [200])
+                         :state-function #(m/add (m/mmul 0.75 %) (m/mmul 0 %2))
+                         :prediction (m/matrix [0.75])}))
 
-## Options
+;; Create observations
+(def obs (map #(m/matrix [%]) [662 496 372 279 157 118 88 66]))
 
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
+;; Run the filter
+(run-filter start-state obs)
+```
 
 ## License
 
-Copyright © 2017 FIXME
+Copyright © 2017 recursiveMake
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
