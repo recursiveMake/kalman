@@ -78,13 +78,15 @@
   (kalman-update (kalman-predict system) observation))
 
 (defn run-filter
+  "Run Kalman filter on a system given a seq of observations"
   [system all-observations]
   (loop [sys system
          observations all-observations]
-    (if (> (count observations) 0)
-      (let [new-sys (kalman sys (first observations))]
-        (println (select-keys new-sys [:state :covariance]))
-        (recur new-sys (rest observations))))))
+    (if-let [observation (first observations)]
+      (let [updated-sys (kalman sys observation)]
+        (println (select-keys updated-sys [:state :covariance]))
+        (recur updated-sys (rest observations)))
+      sys)))
 
 (defn -main
   "I don't do a whole lot ... yet."
