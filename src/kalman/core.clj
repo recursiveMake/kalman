@@ -14,6 +14,7 @@
   [size]
   {:state (m/matrix (repeat size 0))    ; x, state
    :covariance (m/identity-matrix size) ; P, covariance
+   ; nil sensor-variance or prediction leads to differentiate f and h
    :sensor-variance (m/identity-matrix size)  ; H, Jacobian of sensor function h(x)
    :prediction (m/identity-matrix size) ; F, Jacobian of state-transition function f(x, u)
    :noise (m/zero-matrix size size)     ; Q, untracked influences
@@ -29,20 +30,37 @@
   [system]
   ((:state-function system) (:state system) (:control system)))
 
+(defn differentiate
+  "Finite step differentiation (complex step is better)"
+  ([function value]
+   (differentiate function value 1e-8))
+  ([function value epsilon]
+   (let [fx-e  (function (m/add value epsilon))
+         fx (function value)]
+     (m/mmul (m/sub fx-e fx) (/ 1 epsilon)))))
+
 (defn predict-covariance
   "FPF' + Q"
   [system]
-  (m/add (m/mmul (:prediction system)
-                 (m/mmul (:covariance system)
-                         (m/transpose (:prediction system))))
-         (:noise system)))
+  (let [jacobian (or
+                  (:prediction system)
+                  (differentiate
+                   #((:state-function system) % (:control system))
+                   (:state system)))]
+    (m/add (m/mmul jacobian
+                   (m/mmul (:covariance system)
+                           (m/transpose jacobian)))
+           (:noise system))))
 
 (defn update-gain
   "PH'(HPH' + R)^-1"
   [system]
-  (m/mmul (m/mmul (:covariance system) (m/transpose (:sensor-variance system)))
-          (m/inverse (m/add (m/mmul (:sensor-variance system) (m/mmul (:covariance system) (m/transpose (:sensor-variance system))))
-                            (:sensor-noise system)))))
+  (let [jacobian (or
+                  (:sensor-variance system)
+                  (differentiate (:sensor-function system) (:state system)))]
+      (m/mmul (m/mmul (:covariance system) (m/transpose jacobian))
+              (m/inverse (m/add (m/mmul jacobian (m/mmul (:covariance system) (m/transpose jacobian)))
+                                (:sensor-noise system))))))
 
 (defn update-state
   "x + G(z-h(x))"
@@ -89,6 +107,6 @@
       sys)))
 
 (defn -main
-  "I don't do a whole lot ... yet."
+  ""
   [& args]
   (println "Hello, World!"))
