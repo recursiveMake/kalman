@@ -15,64 +15,60 @@
 ;; Predict functions
 
 (defn predict-state
-  "f(x, u)"
+  "Fx + u"
   [system]
-  ((:state-function system) (:state system) (:control system)))
+  (m/add (m/mmul (:state-predict system) (:state system)) (:control system)))
 
 (defn predict-covariance
   "FPF' + Q"
   [system]
-  (let [jacobian (or
-                  (:prediction system)
-                  (differentiate
-                   #((:state-function system) % (:control system))
-                   (:state system)))]
-    (m/add (m/mmul jacobian
-                   (m/mmul (:covariance system)
-                           (m/transpose jacobian)))
-           (:noise system))))
+  (let [predict-mtx (:state-predict system)]
+    (m/add (m/mmul predict-mtx
+                   (m/mmul (:state-variance system)
+                           (m/transpose predict-mtx)))
+           (:state-noise system))))
 
 ;; Update functions
 
 (defn update-gain
   "PH'(HPH' + R)^-1"
   [system]
-  (let [jacobian (or
-                  (:sensor-variance system)
-                  (differentiate (:sensor-function system) (:state system)))]
-      (m/mmul (m/mmul (:covariance system) (m/transpose jacobian))
-              (m/inverse
-               (m/add
-                (m/mmul jacobian (m/mmul (:covariance system) (m/transpose jacobian)))
-                (:sensor-noise system))))))
+  (let [sensor-variance (:sensor-variance system)
+        state-variance (:state-variance system)]
+    (m/mmul (m/mmul state-variance (m/transpose sensor-variance))
+            (m/inverse
+             (m/add
+              (m/mmul sensor-variance
+                      (m/mmul state-variance (m/transpose sensor-variance)))
+              (:sensor-noise system))))))
 
 (defn update-state
-  "x + G(z-h(x))"
+  "x + G(z-Hx)"
   [system observation]
   (m/add (:state system)
          (m/mmul (:gain system)
                  (m/sub observation
-                        ((:sensor-function system) (:state system))))))
+                        (m/mmul (:sensor-variance system) (:state system))))))
 
 (defn update-covariance
   "P - GHP"
   [system]
-  (m/sub (:covariance system)
+  (m/sub (:state-variance system)
          (m/mmul (:gain system)
-                 (m/mmul (:sensor-variance system)) (:covariance system))))
+                 (m/mmul (:sensor-variance system)) (:state-variance system))))
 
 (defn kalman-predict
   "Estimate state and covariance matrix"
   [system]
   (set-system-parameter system {:state (predict-state system)
-                                :covariance (predict-covariance system)}))
+                                :state-variance (predict-covariance system)}))
 
 (defn kalman-update
   "Run the Kalman update step"
   [system observation]
   (let [sys (set-system-parameter system {:gain (update-gain system)})]
     (set-system-parameter sys {:state (update-state sys observation)
-                               :covariance (update-covariance sys)})))
+                               :state-variance (update-covariance sys)})))
 
 (defn kalman-step
   "Run Kalman on one observation"
@@ -86,6 +82,6 @@
          observations all-observations]
     (if-let [observation (first observations)]
       (let [updated-sys (kalman-step sys observation)]
-        (println (select-keys updated-sys [:state :covariance]))
+        (println (select-keys updated-sys [:state :state-variance]))
         (recur updated-sys (rest observations)))
       sys)))
