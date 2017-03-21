@@ -70,6 +70,13 @@
     (set-system-parameter sys {:state (update-state sys observation)
                                :state-variance (update-covariance sys)})))
 
+(defn kalman-observe
+  "Show kalman current kalman observation
+  z = Hx, Sigma = HPH' "
+  [system]
+  {:observation (m/mmul (:sensor-variance system) (:state system))
+   :uncertainty (m/mmul (:sensor-variance system) (m/mmul (:state-variance system) (m/transpose (:sensor-variance system))))})
+
 (defn kalman-step
   "Run Kalman on one observation"
   [system observation]
@@ -81,7 +88,13 @@
   (loop [sys system
          observations all-observations]
     (if-let [observation (first observations)]
-      (let [updated-sys (kalman-step sys observation)]
-        (println (select-keys updated-sys [:state :state-variance]))
+      (let [updated-sys (kalman-step sys observation)
+            state (:state updated-sys)
+            prediction (kalman-observe updated-sys)]
+        (println (str "  Obs: " observation))
+        (println (str "State: " state))
+        (println (str " Pred: " (:observation prediction)))
+        (println (str "  Var: " (:uncertainty prediction)))
+        (println "")
         (recur updated-sys (rest observations)))
       sys)))
