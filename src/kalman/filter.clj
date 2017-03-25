@@ -75,7 +75,9 @@
   z = Hx, Sigma = HPH' "
   [system]
   {:observation (m/mmul (:sensor-variance system) (:state system))
-   :uncertainty (m/mmul (:sensor-variance system) (m/mmul (:state-variance system) (m/transpose (:sensor-variance system))))})
+   :uncertainty (m/diagonal (m/mmul
+                             (:sensor-variance system)
+                             (m/mmul (:state-variance system) (m/transpose (:sensor-variance system)))))})
 
 (defn kalman-step
   "Run Kalman on one observation"
@@ -88,13 +90,26 @@
   (loop [sys system
          observations all-observations]
     (if-let [observation (first observations)]
-      (let [updated-sys (kalman-step sys observation)
-            state (:state updated-sys)
-            prediction (kalman-observe updated-sys)]
-        (println (str "  Obs: " observation))
-        (println (str "State: " state))
-        (println (str " Pred: " (:observation prediction)))
-        (println (str "  Var: " (:uncertainty prediction)))
-        (println "")
+      (let [updated-sys (kalman-step sys observation)]
+        ;; (println (str "  Obs: " observation))
+        ;; (println (str "State: " state))
+        ;; (println (str " Pred: " (:observation prediction)))
+        ;; (println (str "  Var: " (:uncertainty prediction)))
+        ;; (println "")
         (recur updated-sys (rest observations)))
       sys)))
+
+(defn logging-kalman
+  "Run Kalman filter on a system, recording states as executing"
+  [system all-observations]
+  (loop [sys system
+         observations all-observations
+         states []]
+    (if-let [observation (first observations)]
+      (let [updated-sys (kalman-step sys observation)
+            prediction (kalman-observe sys)
+            state {:observation observation
+                   :prediction (:observation prediction)
+                   :uncertainty (:uncertainty prediction)}]
+        (recur updated-sys (rest observations) (conj states state)))
+      states)))

@@ -16,6 +16,8 @@ lein repl
 ;; Load matrix
 (require '[clojure.core.matrix :as m])
 
+(require '[kalman.system :refer [set-system-parameter, create-system]])
+
 ;; Create a system with parameters
 (def start-state
   (set-system-parameter (create-system 1 1)
@@ -28,6 +30,26 @@ lein repl
 
 ;; Run the filter
 (kalman start-state obs)
+
+;; Load sample data 
+(require '[kalman.sample :as sample])
+(def s-data (sample/data (sample/file-name)))
+
+;; Create observables
+(def obs (sample/observables s-data))
+
+;; Create a system
+(def system (sample/system (first obs)))
+
+;; Run filter
+(logging-kalman system (rest obs))
+
+;; Visualize path
+(require '[kalman.visual :as visual])
+(def v-data (visual/data))
+
+;; Plot raw data positions
+(visual/v (visual/plot v-data))
 ```
 
 ## License
