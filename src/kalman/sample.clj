@@ -1,6 +1,7 @@
 (ns kalman.sample
   (:require [clojure.core.matrix :as m]
             [clojure.string :as string]
+            [clojure.math.numeric-tower :as math]
             [kalman.io :refer [read-file, lazy-read-file, cast-line, annotate-row]]
             [kalman.system :refer [set-system-parameter, create-system]]))
 
@@ -49,3 +50,18 @@
     :sensor-noise (m/matrix [
                              [0.1  0 ]
                              [ 0  0.1]])}))
+
+(defn group
+  "Given data seq and result seq, do zip assoc"
+  [data result]
+  (let [prediction (:prediction result)
+        uncertainty (:uncertainty result)
+        state (:state result)
+        [x y vx vy] (seq state)]
+    (assoc data
+           :x-prediction (first prediction)
+           :y-prediction (second prediction)
+           :x-uncertainty (math/sqrt (first uncertainty))
+           :y-uncertainty (math/sqrt (second uncertainty))
+           :x-v-prediction vx
+           :y-v-prediction vy)))

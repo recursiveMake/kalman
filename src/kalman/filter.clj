@@ -100,7 +100,11 @@
       sys)))
 
 (defn logging-kalman
-  "Run Kalman filter on a system, recording states as executing"
+  "Run Kalman filter on a system, recording states as executing
+  :observation current observation
+  :prediction  estimated observation (before recording observation)
+  :uncertainty kalman uncertainty (before recording observation)
+  :state       current state (after recording observation)"
   [system all-observations]
   (loop [sys system
          observations all-observations
@@ -110,6 +114,7 @@
             prediction (kalman-observe sys)
             state {:observation observation
                    :prediction (:observation prediction)
-                   :uncertainty (:uncertainty prediction)}]
+                   :uncertainty (:uncertainty prediction)
+                   :state (:state updated-sys)}]
         (recur updated-sys (rest observations) (conj states state)))
       states)))
