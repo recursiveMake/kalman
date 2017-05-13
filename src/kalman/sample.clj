@@ -5,13 +5,19 @@
             [kalman.io :refer [read-file, lazy-read-file, cast-line, annotate-row]]
             [kalman.system :refer [set-system-parameter, create-system]]))
 
+;; Elements in this file are hardcoded for sample data
+;; Generalize to remove the dependency on column headings in data matrix
+
 (defn file-name
-  "Get sample file name"
+  "Demo sample file name"
   []
   "resources/data.txt")
 
 (defn data
-  "Load sample data from resources"
+  "Load sample data from resources
+
+  Assumes comma separated list of values with a header row.
+  Returns a list of maps keyed by column headings"
   [file-name]
   (let [header (map keyword (string/split (first (lazy-read-file file-name)) #","))]
     (map #(annotate-row % header)
@@ -19,7 +25,10 @@
               (rest (read-file file-name))))))
 
 (defn observables
-  "Get observables from data map"
+  "Get observables from data map
+
+  Formats observables as a data matrix.
+  Hardcoded to :{x,y}-observable TODO: generalize"
   [data]
   (map #(m/matrix [(:x-observable %) (:y-observable %)]) data))
 
